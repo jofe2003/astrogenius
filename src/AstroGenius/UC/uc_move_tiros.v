@@ -1,7 +1,7 @@
 
 module uc_move_tiros (
         input clock                    ,
-        input iniciar                  ,
+        input movimenta_tiro           ,
         input reset                    ,
         input [1:0] opcode_tiro        ,
         input loaded_tiro              ,
@@ -20,6 +20,7 @@ module uc_move_tiros (
         output reg reset_contador_tiro ,
         output reg conta_contador_tiro , 
         output reg enable_mem_tiro     , // enable da memoria de tiros
+        output reg enable_load_tiro    ,
         output reg new_loaded,                 // valor do loaded que será salvo na nossa memoria (é 0 quando tiro sair da tela) 
         output reg movimentacao_concluida_tiro, // sinal que indica o fim da movimentação dos tiros
         output reg [4:0] db_estado_move_tiros
@@ -41,7 +42,8 @@ module uc_move_tiros (
     parameter vertical_decrescente   = 5'b01100; // C
     parameter salva_posicao          = 5'b01101; // D
     parameter sinaliza               = 5'b01110; // E
-    parameter erro                   = 5'b01111; // F
+    parameter aux                    = 5'b01111; // F
+    parameter erro                   = 5'b11111; // erro
 
 // Variáveis de estado
         reg [3:0] estado_atual, proximo_estado;
@@ -56,20 +58,19 @@ module uc_move_tiros (
 
         // mudança de estados
         always @* begin
-        case (estado_atual)
+        case (estado_atual) 
                 inicio:                proximo_estado = espera;
-                espera:                proximo_estado = iniciar ? reseta_contador : espera;
+                espera:                proximo_estado = movimenta_tiro ? reseta_contador : espera;
                 reseta_contador:       proximo_estado = verifica_loaded;
                 verifica_loaded:       proximo_estado =   loaded_tiro                        ? verifica_saiu_tela  : 
-                                                        (~loaded_tiro && ~rco_contador_tiro) ? conta_contador_tiro : 
-                                                        (~loaded_tiro && rco_contador_tiro)  ? movimentacao_concluida_tiro : verifica_loaded;
+                                                        (~loaded_tiro && ~rco_contador_tiro) ? incrementa_contador : 
+                                                        (~loaded_tiro && rco_contador_tiro)  ? sinaliza : verifica_loaded;
                 verifica_saiu_tela:    proximo_estado = (opcode_tiro == 2'b00 && x_borda_max_tiro  ||
-                                                         opcode_tiro == 2'b01 && y_borda_max_tiro  ||
-                                                         opcode_tiro == 2'b10 && x_borda_min_tiro  ||
-                                                         opcode_tiro == 2'b01 && y_borda_min_tiro  )? altera_loaded : verifica_opcode;
+                                                         opcode_tiro == 2'b01 && x_borda_min_tiro  ||
+                                                         opcode_tiro == 2'b10 && y_borda_max_tiro  ||
+                                                         opcode_tiro == 2'b11 && y_borda_min_tiro  )? altera_loaded : verifica_opcode;
                 altera_loaded:          proximo_estado = salva_loaded;
-                salva_loaded:           proximo_estado = rco_contador_tiro ? movimentacao_concluida_tiro : conta_contador_tiro;
-                conta_contador_tiro:    proximo_estado = verifica_loaded;
+                salva_loaded:           proximo_estado = rco_contador_tiro ? sinaliza : incrementa_contador;
                 verifica_opcode:        proximo_estado = opcode_tiro == 2'b00 ? horizontal_crescente : 
                                                          opcode_tiro == 2'b01 ? horizontal_decrescente :
                                                          opcode_tiro == 2'b10 ? vertical_crescente : vertical_decrescente;
@@ -77,7 +78,10 @@ module uc_move_tiros (
                 horizontal_decrescente: proximo_estado = salva_posicao;
                 vertical_crescente:     proximo_estado = salva_posicao;
                 vertical_decrescente:   proximo_estado = salva_posicao;
-                salva_posicao:          proximo_estado = rco_contador_tiro ? movimentacao_concluida_tiro : incrementa_contador;
+                salva_posicao:          proximo_estado = rco_contador_tiro ? sinaliza : incrementa_contador;
+                incrementa_contador:    proximo_estado = aux;
+                aux:                    proximo_estado = verifica_loaded;
+                sinaliza:               proximo_estado = espera;
                 default:                proximo_estado = inicio;
         endcase
     end
@@ -85,8 +89,13 @@ module uc_move_tiros (
     // Lógica de saída (maquina Moore)
     always @* begin
         reset_contador_tiro         = (estado_atual == reseta_contador) ? 1'b1 : 1'b0;
-        new_loaded                  = (estado_atual == altera_loaded) ? 1'b0 : 1'b1;
-        enable_mem_tiro             = (estado_atual == salva_loaded) ? 1'b1 : 1'b0;
+        new_loaded                  = (estado_atual == altera_loaded || 
+                                       estado_atual == salva_loaded) ? 1'b0 : 1'b1;
+        enable_load_tiro             = (estado_atual == salva_loaded) ? 1'b1 : 1'b0;
+        enable_mem_tiro             = (estado_atual == horizontal_crescente || 
+                                        estado_atual == horizontal_decrescente ||
+                                        estado_atual == vertical_crescente ||
+                                        estado_atual == vertical_decrescente) ? 1'b1 : 1'b0;
         conta_contador_tiro         = (estado_atual == incrementa_contador) ? 1'b1 : 1'b0;
         select_soma_sub             = (estado_atual == horizontal_decrescente ||
                                        estado_atual == vertical_decrescente      )? 1'b1 : 1'b0;
@@ -115,7 +124,8 @@ module uc_move_tiros (
                 vertical_decrescente:   db_estado_move_tiros = 5'b01100; // C
                 salva_posicao:          db_estado_move_tiros = 5'b01101; // D
                 sinaliza:               db_estado_move_tiros = 5'b01110; // E
-                erro:                   db_estado_move_tiros = 5'b01111; // F
+                aux:                    db_estado_move_tiros = 5'b01111; // F
+                erro:                   db_estado_move_tiros = 5'b11111; // erro
                 default:                db_estado_move_tiros = 5'b11111; // 
         endcase
     end
