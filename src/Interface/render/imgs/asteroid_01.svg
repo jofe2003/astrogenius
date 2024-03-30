@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#000000"
      inkscape:document-units="mm"
-     inkscape:zoom="0.63496761"
-     inkscape:cx="433.09296"
-     inkscape:cy="429.94319"
+     inkscape:zoom="0.4489899"
+     inkscape:cx="329.62879"
+     inkscape:cy="476.62542"
      inkscape:window-width="1292"
      inkscape:window-height="704"
      inkscape:window-x="0"
@@ -46,9 +46,10 @@
        inkscape:label=""
        inkscape:color="rgb(0,134,229)" /></sodipodi:namedview><defs
      id="defs1" /><g
-     inkscape:label="Calque 1"
+     inkscape:label="asteroid_01"
      inkscape:groupmode="layer"
-     id="layer1"><path
+     id="layer1"
+     style="display:inline"><path
        style="fill:none;stroke:#ffffff;stroke-width:2.64583"
        d="M 183.5022,81.654554 146.45278,70.249351 142.71887,25.650722 44.504223,48.941299 30.732362,158.52045 l 91.020268,12.3281 z"
        id="path1" /><path
