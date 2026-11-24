@@ -34,7 +34,7 @@ Ao bloco completo de transmissão, dá-se o nome de **chunk**. Em cada chunk, os
     - **G2[3]** = Tiro Disponível: 1 bit (booleano)
     - **G2[4]** = Acabou vidas: 1 bit (booleano)
     - **G2[5:8]** = blank_space: 3 bits (ignorar)
-- [BP] **Break Point**: 8 bytes de fim de bloco, configurados para **SB = "AA AA AA AA"** (hexadecimal)
+- [BP] **Break Point**: 8 bytes de fim de bloco, configurados para **BP = "41 41 41 41 41 41 41 41"** (hexadecimal)
 
 
 ## Decodificação das Posições
