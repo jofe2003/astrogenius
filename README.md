@@ -1,178 +1,228 @@
 # A S T R O G E N I U S
-O **Astrogenius** é uma reprodução simplificada, para sintetização em uma **placa FPGA**, do clássico jogo de arcade "Asteroids", onde o jogador controla uma nave espacial em um campo de asteróides e deve destruí-los enquanto evita colisões.
 
-**Autores**<br>
+O **AstroGenius** é um jogo no estilo *arcade* de asteroides, projetado para ser sintetizado numa **placa FPGA**. O jogador controla uma nave no centro de um campo de asteroides e deve destruí-los com tiros (normais ou especiais) enquanto evita colisões.
+
+Projeto desenvolvido na disciplina **PCS3635 – Laboratório Digital I** (Escola Politécnica da USP, turma T5BB5). O repositório original da equipe é [henriqueedu2001/poli-asteroids](https://github.com/henriqueedu2001/poli-asteroids).
+
+<p align="center">
+  <img src="docs/media/demo.gif" alt="AstroGenius rodando: controle do arcade e o jogo na tela" width="480">
+  <br>
+  <em>Jogo rodando na FPGA, com a interface gráfica no monitor (trecho do vídeo da entrega da semana 4).</em>
+</p>
+
+**Autores**
 - [Felipe Luis Korbes](https://github.com/luis-fk)
 - [Henrique S. Souza](https://github.com/henriqueedu2001)
 - [João Felipe Souza Melo](https://github.com/jofe2003)
 
-O game foi projetado para ser implementado na forma de um arcade, com um controle de jogador fixo na carcaça e um monitor que exibe a informação gráfica. A lógica do jogo é implementada integralmente numa **placa FPGA Cyclone V 5CEBA4F23C7N Device**.
+## Sumário
 
-- [Como usar este repositório?](#como-usar-este-repositório)
-- [Teste com fitas binárias](#teste-com-fitas-binárias)
-- [Transmissão serial de dados](#transmissão-serial-de-dados)
-- [Decodificação das Slices](#decodificação-das-slices)
-- [Decodificação das Posições](#decodificação-das-posições)
-- [Decodificação da direção](#decodificação-da-direção)
+- [Descrição](#descrição)
+- [Demonstração](#demonstração)
+- [Requisitos](#requisitos)
+- [Instalação](#instalação)
+- [Uso](#uso)
+- [Estrutura de pastas](#estrutura-de-pastas)
+- [Evolução do projeto](#evolução-do-projeto)
+- [Fitas binárias (modo de depuração)](#fitas-binárias-modo-de-depuração)
+- [Protocolo de transmissão serial](#protocolo-de-transmissão-serial)
+- [Licença](#licença)
 
-## Como usar este repositório?
-Esse repositório engloba três elementos:
-- Descrição do hardware, que será utilizada na sintetização na placa FPGA, 
-- Módulo de comunicação serial UART, para transmissão de dados FPGA ---> monitor
-- Software gráfico, responsável por renderizar na tela os dados recebidos pela placa no monitor
+## Descrição
 
-O projeto está atualmente (07/04/2024) em sua versão v2.0. Recomenda-se baixar a versão mais recente desse repositório, que pode ser feito. Mas, há outras versões completas e funcionais, que podem ser também obtidas (veja [releases](https://github.com/henriqueedu2001/poli-asteroids/releases)). 
+O jogo foi pensado para funcionar como um arcade: um controle fixo na carcaça e um monitor que exibe os gráficos. O projeto tem três partes:
 
-Escolhida a versão adequada, baixe o repositório no seu diretório. A forma mais direta é por meio de um clone do git:
+1. **Hardware (Verilog)**: toda a lógica do jogo (menu, movimento de asteroides e tiros, colisões, pontuação, vidas e dificuldade) roda numa FPGA **Cyclone V 5CEBA4F23C7N**. O módulo de topo é `astro_genius` (`src/AstroGenius/astro_genius.v`). Ele recebe os comandos por 6 chaves/botões e envia o estado do jogo pela saída `saida_serial`.
+2. **Comunicação serial (UART)**: a placa envia ao computador, por UART a 9600 baud, um pacote de 51 bytes com o estado do jogo e, nas trocas de tela, um *byte de menu*.
+3. **Interface gráfica (Python + pygame)**: lê os dados da porta serial, decodifica os pacotes e desenha as telas (menu inicial, gameplay, game over, pontuações) no monitor.
+
+Para testar a interface sem a placa, existe um **modo de depuração**: os bytes vêm de um arquivo de texto (uma "fita binária") em vez da porta serial.
+
+## Demonstração
+
+O GIF no topo é um trecho de 12 segundos do vídeo `jogoFuncionando.mp4`, gravado no laboratório em 03/04/2024. Primeiro aparece o controle do arcade (a caixa com os botões, ligada à FPGA); depois, a tela com a pontuação subindo enquanto a nave atira nos asteroides.
+
+O vídeo completo (41 s) está dentro de `src/Entregas/semana4/PCS3635-T5BB5-Relatorio-Semana4.zip`.
+
+## Requisitos
+
+### Interface gráfica
+- Python **3.8 ou mais recente** (testado com 3.8 e 3.10)
+- [pygame](https://www.pygame.org/) (testado com 2.5.2)
+- [pyserial](https://pypi.org/project/pyserial/) (só é usado no modo `gameplay`, mas é importado sempre)
+
+### Hardware (opcional, para sintetizar ou simular)
+- Placa FPGA com Cyclone V **5CEBA4F23C7N** (ex.: DE0-CV)
+- **Intel Quartus Prime**, para abrir os arquivos `.qar` e gravar a placa
+- Um adaptador USB-serial ligado à saída `saida_serial` da placa
+- [Icarus Verilog](https://steveicarus.github.io/iverilog/) e [GTKWave](https://gtkwave.sourceforge.net/), para simular os testbenches
+- [Digital](https://github.com/hneemann/Digital), para abrir os circuitos `.dig`
+
+## Instalação
+
+```bash
+git clone https://github.com/jofe2003/astrogenius.git
+cd astrogenius
+
+# (recomendado) ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+pip install pygame pyserial
+```
+
+Também é possível baixar uma versão específica (veja as [tags](https://github.com/jofe2003/astrogenius/tags)):
+
+```bash
+git clone --branch v2.0 --depth 1 https://github.com/jofe2003/astrogenius.git
+```
+
+## Uso
+
+### 1. Interface gráfica
+
+A configuração fica no dicionário `GAME_CONFIG` em `start_game.py`. Depois de ajustar, rode na raiz do repositório:
+
+```bash
+python start_game.py
+```
+
+Principais opções de `GAME_CONFIG`:
+
+| Chave | Descrição |
+|-------|-----------|
+| `mode` | `'gameplay'` lê da porta serial (placa); `'debug'` lê de uma fita binária |
+| `serial_port` | Porta serial da placa, ex.: `'COM4'` (Windows) ou `'/dev/ttyUSB0'` (Linux) |
+| `byte_tape` | Nome da fita usada no modo `debug`, sem extensão (ex.: `'in_default'`, `'fita_01'`) |
+| `screen_widht` / `screen_heigth` | Tamanho da janela em pixels (os nomes das chaves são escritos assim mesmo) |
+| `delay` | Pausa, em segundos, entre leituras (útil para assistir uma fita em câmera lenta) |
+| `print_*` | Ativam prints de depuração no terminal (buffer, chunk, UART, dados recebidos, tela atual) |
+
+**Para testar sem a placa**, coloque `'mode': 'debug'` e escolha uma fita em `byte_tape`.
+
+Para listar as portas seriais disponíveis:
+
+```bash
+python -c "import serial.tools.list_ports as p; [print(x.device) for x in p.comports()]"
+```
+
+No modo `gameplay`, se a porta não abrir, o programa tenta de novo a cada 2 segundos.
+
+### 2. Hardware
+
+- **Quartus**: abra `src/Quartus/astro_genius.qar` (*Project → Restore Archived Project*), compile e grave a placa.
+- **Simulação com Icarus Verilog**: em `src/AstroGenius/` existe um `comp.txt` com a lista de arquivos a compilar:
+  ```bash
+  cd src/AstroGenius
+  iverilog -c comp.txt -o sim && vvp sim
+  gtkwave wave.vcd          # os arquivos h.gtkw e menu.gtkw guardam layouts de sinais
+  ```
+  Para simular outro testbench, troque o arquivo `*_tb.v` que está ativo no `comp.txt`.
+- **Arquivo único**: `src/AstroGenius/comp.py` junta todos os módulos em `digital.v`, que serve para importar o projeto no simulador Digital. Esse arquivo é gerado e não fica versionado:
+  ```bash
+  cd src/AstroGenius && python comp.py
+  ```
+
+## Estrutura de pastas
 
 ```
-git clone --branch <version> --depth 1 https://github.com/henriqueedu2001/poli-asteroids.git
+poli-asteroids/
+├── start_game.py            # Ponto de entrada da interface gráfica (configuração em GAME_CONFIG)
+├── bytetapes/               # Fitas binárias (.bin) para o modo de depuração
+├── docs/
+│   ├── chunk_encoding.md    # Especificação do pacote serial FPGA -> PC
+│   └── media/demo.gif       # Trecho do vídeo de demonstração
+└── src/
+    ├── AstroGenius/         # Versão atual do hardware (Verilog)
+    │   ├── astro_genius.v   # Módulo de topo
+    │   ├── jogo_base.v      # Fluxo de dados do jogo
+    │   ├── asteroide.v, tiro.v
+    │   ├── UC/              # Unidades de controle (máquinas de estado) + testbenches em UC/tb/
+    │   ├── Modulos/         # Blocos básicos: contadores, registradores, muxes, UART TX, memórias...
+    │   ├── tb/              # Testbenches de submódulos
+    │   ├── comp.txt         # Lista de arquivos para o iverilog
+    │   ├── comp.py          # Gera digital.v (todos os módulos num único arquivo, não versionado)
+    │   └── *.gtkw           # Layouts de sinais do GTKWave
+    ├── Interface/           # Interface gráfica em Python
+    │   ├── main.py          # Classe Game: laço principal, recepção UART/fita, troca de telas
+    │   ├── render/          # Telas (menu, gameplay, game over, pontuações, debug) e sprites em imgs/
+    │   └── utilitary/       # UART, buffer, chunk e decodificador, leitor de fitas binárias
+    ├── Quartus/             # Projeto Quartus arquivado (astro_genius.qar)
+    ├── Digital/             # Circuitos do simulador Digital (.dig)
+    ├── Verilog/             # Primeira versão do hardware (legado)
+    ├── Entregas/            # Entregas semanais da disciplina (veja "Evolução do projeto")
+    ├── Pitch/               # Apresentação inicial do projeto
+    ├── Design/              # Documento de design
+    └── Misc/                # Rascunhos e arquivos avulsos
 ```
 
-Sendo \<version\> a versão escolhida por vocẽ. Por exemplo, para v2.0 (recomendado), o comando fica:
+## Evolução do projeto
 
-```
-git clone --branch v2.0 --depth 1 https://github.com/henriqueedu2001/poli-asteroids.git
-```
+O projeto foi feito em quatro semanas de laboratório, de março a abril de 2024. A cada semana a equipe entregava um planejamento em PDF e, junto, o projeto Quartus (`astro_genius.qar`) ou o Verilog daquele momento. Esses arquivos ficam em `src/Entregas/` e mostram como o jogo foi crescendo:
 
-## Teste com fitas binárias
-Os dados para renderização do jogo saem de uma placa FPGA, via transmissão serial. No entanto, para fins de teste e demonstração do software gráfico, esse projeto conta com um **modo de debug** capaz de ler os dados a partir de um arquivo pré-definido. Assim, é possível emular uma receção de dados sem necessariamente realizar a montagem física do projeto.
+| Semana | Data | O que tem | Arquivos |
+|--------|------|-----------|----------|
+| 1 | 13/03/2024 | Pitch da ideia, primeira versão do fluxo de dados e das unidades de controle, simulações no Digital e testbenches | `src/Pitch/PCS3635-T5BB5-Pitch-Semana1.pdf`, `src/Entregas/PCS3635-T5BB5-Planejamento-Semana_1.{pdf,zip}`, `src/Verilog/` |
+| 2 | 20/03/2024 | Fluxo de dados e unidades de controle de asteroides e tiros (mover, registrar tiro, comparar colisões) | `src/Entregas/semana2/` (PDF, ZIP e o Verilog entregue em `Verilog/`) |
+| 3 | 27/03/2024 | Requisitos, primeira versão da serialização (UART) e projeto Quartus | `src/Entregas/semana3/` |
+| 4 | 03/04/2024 | Hardware completo em Verilog, interface gráfica em pygame, serialização, maquete e controle do arcade. O relatório traz o vídeo do jogo funcionando | `src/Entregas/semana4/` |
 
-Cada arquivo desse tipo, que contém a informação é dito uma fita binária, que nada mais é que uma especificação de quais bytes serão enviados para o software. Elas são armazenadas no diretório `bytetapes`. Ao rodar o jogo em modo de debug, a fita binária recebida por padrão é a `in_default`, que demonstra uma navegação básica pelo menu do jogo e o gameplay.
+Os `.zip` são os pacotes enviados em cada entrega (PDF + projeto) e foram mantidos como registro. A versão final do hardware está em `src/AstroGenius/`. As versões publicadas estão marcadas nas tags do git: `v1.0`, `v1.0.1`, `v1.0.2`, `v1.0.3` e `v2.0`.
 
-Há fitas pré-configuradas nesse diretório, para rodar em modo de depuração. Mas, você pode criar suas próprias fitas binárias, para simular qualquer configuração de jogo. As fitas são escritas num formato `.bin`, que possui uma sintaxe projetada ad-hoc.
+## Fitas binárias (modo de depuração)
 
-Para exemplificar, a fita `in_default.bin` está exibida abaixo.
+Uma fita binária é um arquivo `.bin` em `bytetapes/`, escrito em **texto**, que lista os bytes que a interface vai "receber". A fita padrão é `in_default.bin`, que mostra a navegação pelo menu e um trecho de gameplay.
 
 ```
 # FITA PADRÃO DE TESTE
-# para fazer comentários, utilize os símbolos # ou // 
+# comentários começam com # ou //
 
-input f0 # initial menu
-input f4 # gameplay
+input f0 # byte de menu: menu inicial
+input f4 # byte de menu: gameplay
 
-input # bloco 01
-01 00 00 00 00 00 00 00 
+input # bloco 01 (51 bytes)
+01 00 00 00 00 00 00 00
 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
-00 00 00 41 41 41 41 41
-41 41 41
-
-input # bloco 02
-02 00 00 00 00 00 00 00 
 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
-00 00 00 41 41 41 41 41
-41 41 41
-
-# [...]
-
-input # bloco 08
-02 00 00 00 00 00 00 00 
 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
-00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00
 00 00 00 41 41 41 41 41
 41 41 41
 ```
 
-Para cada conjunto de recepção de dados, escreva o token `input`; para transmissão, use `output`. O compilador aceita também que esses tokens estejam em caixa alta. Portanto, `INPUT` e `OUTPUT` são tokens válidos. Em seguida, escreva o conteúdo do bloco em hexadecimal. O compilador dessa linguagem aceita hexadecimais escritos em diversas formas diferentes, com dígitos tanto maísculos como minúsculos. Algumas sequências hexadecimais válidas incluem:
+Regras:
+- Cada leitura começa com o token `input` (ou `INPUT`). `output`/`OUTPUT` também são aceitos.
+- Os bytes vêm em hexadecimal, com dígitos maiúsculos ou minúsculos. Espaços e quebras de linha são ignorados, mas o **total de dígitos de cada bloco precisa ser par**.
+- Comentários de uma linha com `#` ou `//`. O que fica depois do token é ignorado até o fim da linha.
+- Um bloco com **um único byte** é tratado como *byte de menu* e troca a tela:
 
-- ```4f 5a 2b ff``` (dígitos minúsculos)
+| Byte | Tela |
+|------|------|
+| `F0` | Menu inicial |
+| `F1` | Pontuações |
+| `F2` | Game over |
+| `F3` | Registrar pontuação |
+| `F4` | Gameplay |
 
-- ```B4 3C 2A 43 57``` (dígitos maísculos)
+## Protocolo de transmissão serial
 
-- ```B6 7A f3 5b``` (dígitos minúsculos e maísculos)
+A placa envia o estado do jogo em pacotes (*chunks*) de **51 bytes**: 43 bytes de dados e 8 bytes de fim de bloco (*break point*, `41 41 41 41 41 41 41 41`).
 
-- ```B 6 7A f3d C5b``` (dígitos minúsculos e maísculos e espaçamento irregular)
+| Slice | Bytes | Conteúdo |
+|-------|-------|----------|
+| PT | 1 | Pontuação |
+| G1 | 1 | Direção da nave (2 bits), vidas (3 bits), dificuldade (3 bits) |
+| AS | 16 | Posições dos asteroides (4 bits para x e 4 bits para y) |
+| DA | 4 | Direções dos asteroides (2 bits cada) |
+| TI | 16 | Posições dos tiros |
+| DT | 4 | Direções dos tiros |
+| G2 | 1 | Flags: jogada especial, especial disponível, tiro, tiro disponível, fim das vidas |
+| BP | 8 | Break point |
 
-- ```B 6 7A \n f3d C5b``` (dígitos minúsculos e maísculos e espaçamento irregular e quebra de linha)
+As direções são codificadas em 2 bits: `00` = RIGHT, `01` = LEFT, `10` = UP, `11` = DOWN.
 
-Não há nenhuma preferência ou prejuízo em optar-se por dígitos hexadecimais maísculos ou minúsculos.
-A condição mais importante para a leitura da fita é a garantia de que a quantidade total de dígitos hexadecimais seja um número par. Caso seja um número ímpar, o software fará uma leitura inadequada da fita. O compilador ignora espaços e quebras de linha, portanto não há necessidade de o bloco estar organizado em algum padrão específico. Mas, para fins de melhor visualização e manipulação das fitas, recomenda-se escrevê-las de forma organizada, com dígitos de um mesmo byte agrupados, espaçamento regular e uma estrutura de tabela
+A especificação completa está em [`docs/chunk_encoding.md`](docs/chunk_encoding.md).
 
-Além disso, o compilador de fitas binárias possui suporte para comentários no formato clássico do python e do C++. Para declarar um comentário, empregue uma das seguintes sintaxes:
+## Licença
 
-```
-# <comment>
-```
-
-ou 
-
-```
-// <comment>
-```
-
-O que está do lado à direita dos tokens de comentários ('#' e '//') será ignorado até a próxima quebra de linha. O que estiver do lado à esquerda do token será incorporado na fita binária. Por exemplo, em:
-
-```
-input
-8f 45 1c 34 # primeiros bytes
-```
-
-A parte `8f 45 1c 34` será considerada, mas `# primeiros bytes` será ignorada.
-
-O compilador não suporta comentários que começam numa linha e terminam em outra. Portanto, faça comentários de uma única linha.
-
-## Transmissão serial de dados
-A transmissão de dados da placa FPGA para a o software da interface gráfica se dá por meio de uma comunicação serial, mediada por uma UART. Como a recepção de dados ocorre byte a byte, desenvolveu-se um protocolo de comunicação próprio que permitiu a recepção de um conjunto de dados de 43 bytes de informação. Esse protocolo consistiu em criar um bloco de transmissão de 51 bytes, no qual os primeiros 43 bytes formam um bloco de dados, representativo da informação do estado do jogo, e os últimos 8 bytes representam o fim do bloco, sequência denominada do projeto de **break point**.
-
-|          | **00** | **01** | **02** | **03** | **04** | **05** | **06** | **07** | 
-|----------|--------|--------|--------|--------|--------|--------|--------|--------|
-| **0000** | PT     | G1     | AS[0]  | AS[1]  | AS[2]  | AS[3]  | AS[4]  | AS[5]  |
-| **0008** | AS[6]  | AS[7]  | AS[8]  | AS[9]  | AS[10] | AS[11] | AS[12] | AS[13] |
-| **0010** | AS[14] | AS[15] | DA[0]  | DA[1]  | DA[2]  | DA[3]  | TI[0]  | TI[1]  | 
-| **0018** | TI[2]  | TI[3]  | TI[4]  | TI[5]  | TI[6]  | TI[7]  | TI[8]  | TI[9]  |
-| **0020** | TI[10] | TI[11] | TI[12] | TI[13] | TI[14] | TI[15] | DT[0]  | DT[1]  |
-| **0028** | DT[2]  | DT[3]  | G2     | BP[0]  | BP[1]  | BP[2]  | BP[3]  | BP[4]  |
-| **0038** | BP[5]  | BP[6]  | BP[7]  |        |        |        |        |        |
-
-Total: 51 bytes
-
-O bloco de transmissão esta dividido em secções de informação dispostas em ordem, denominadas de **slices**. A slice **[AS]**, por exemplo, representa a posição dos asteroides, enquanto que a slice **[G1]** agrupa a direção da nave, a quantidade de vidas e a dificuldade do jogo.
-
-### Decodificação das Slices
-Ao bloco completo de transmissão, dá-se o nome de **chunk**. Em cada chunk, os dados estão em posições fixadas. Por exemplo, o primeiro byte **[PT]** é o de pontuação. Os bytes **[BP]** são os bytes de break point. O conteúdo das slices está disposto abaixo:
-
-- **[PT] Pontuação**: 1 byte de pontuação (inteiro)
-- **[G1] Grupo 1**: 1 byte de informações agrupadas, com
-    - **G1[0:2]** = Direção da nave: 2 bits (UP, DOWN, LEFT, RIGHT)
-    - **G1[2:5]** = Vidas: 3 bits (inteiro)
-    - **G1[5:8]** = Dificuldade: 3 bits (inteiro)
-- **[AS] Posição dos asteroides** 16 bytes de posições de asteroides
-- **[DA] Direção dos asteroides** 4 bytes de direção dos asteroides
-- **[TI] Posições dos tiros** 16 bytes de posições de tiros
-- **[DT] Direções dos tiros** 4 bytes de direção dos tiros
-- **[G2] Grupo 2**: 1 byte de informações agrupadas, com
-    - **G2[0]** = Jogada Especial: 1 bit (booleano)
-    - **G2[1]** = Especial Disponível: 1 bit (booleano)
-    - **G2[2]** = Jogada Tiro: 1 bit (booleano)
-    - **G2[3]** = Tiro Disponível: 1 bit (booleano)
-    - **G2[4]** = Acabou vidas: 1 bit (booleano)
-    - **G2[5:8]** = blank_space: 3 bits (ignorar)
-- [BP] **Break Point**: 8 bytes de fim de bloco, configurados para **SB = "AA AA AA AA"** (hexadecimal)
-
-
-### Decodificação das Posições
-Cada posição **P** é codificada como um byte, do qual os quatro primeiros bits **P[0:4]** e os quatro últimos bits **P[4:8]** representam a posição y. por exemplo, o byte
-
-```
-P = 0111 1101
-```
-
-Representa (x, y), sendo x = 0111 = 7 e y = 1101 = 13
-
-### Decodificação da direção
-Cada direção **D** é formada por dois bits, que juntos são decodificados em quatro direções primirivas, UP, DOWN, LEFT e RIGHT.
-
-| D[0] | D[1] | Posição |
-|------|------|---------|
-|  0   |  0   |   RIGHT |
-|  0   |  1   |   LEFT  |
-|  1   |  0   |   UP    |
-|  1   |  1   |   DOWN  |
+Distribuído sob a licença MIT. Veja [`LICENSE`](LICENSE).
